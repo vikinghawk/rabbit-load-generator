@@ -92,7 +92,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
           }
           for (int k = 1; k <= scenario.getQueuesPerChannel(); k++) {
             final String queueName = queuePrefix + i + "-" + j + "-" + k;
-            final Map<String, Object> args = new LinkedHashMap<>(2);
+            final Map<String, Object> args = new LinkedHashMap<>(0);
             if (scenario.isQuorum()) {
               args.put("x-queue-type", "quorum");
             }
@@ -124,6 +124,13 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                             new String(body, StandardCharsets.UTF_8),
                             connectionName,
                             getChannel().getChannelNumber());
+                        if (scenario.getProcessWaitMillis() > 0) {
+                          try {
+                            Thread.sleep(scenario.getProcessWaitMillis());
+                          } catch (InterruptedException e) {
+                            /* no op */
+                          }
+                        }
                       } finally {
                         getChannel().basicAck(envelope.getDeliveryTag(), false);
                       }
@@ -154,6 +161,8 @@ public class RabbitLoadGenerator implements EnvironmentAware {
         }
         for (int i = 1; i <= totalBindingCount; i++) {
           final String routingKey = routingKeyPrefix + i;
+          final byte[] bytes = new byte[scenario.getPublishMsgSizeBytes()];
+          ThreadLocalRandom.current().nextBytes(bytes);
           exec.scheduleAtFixedRate(
               () -> {
                 try {
@@ -161,14 +170,11 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                   try {
                     final BasicProperties.Builder basicProps = new BasicProperties.Builder();
                     basicProps.messageId(UUID.randomUUID().toString());
-                    final byte[] body =
-                        String.valueOf("LoadGen for routingKey=" + routingKey)
-                            .getBytes(StandardCharsets.UTF_8);
                     if (scenario.isPublishPersistent()) {
                       basicProps.deliveryMode(2);
                     }
                     channel.basicPublish(
-                        scenario.getTopicExchange(), routingKey, basicProps.build(), body);
+                        scenario.getTopicExchange(), routingKey, basicProps.build(), bytes);
                   } finally {
                     channelPool.put(channel);
                   }

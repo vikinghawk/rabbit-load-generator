@@ -28,26 +28,28 @@ public class RabbitLoadGeneratorProperties {
     protected int bindingsPerQueue = 1;
 
     protected boolean autoDelete = true;
-    protected boolean isDurable;
-    protected boolean isQuorum;
+    protected boolean durable;
+    protected boolean quorum;
 
     protected boolean deleteQueuesOnShutdown = true;
     protected boolean renameAutoDeleteQueuesOnRecovery = true;
 
     protected long publishInterval = 10000;
+    protected int publishMsgSizeBytes = 10000;
     protected boolean publishPersistent;
     protected int publishThreads = 5;
+    protected int processWaitMillis = 0;
 
     protected final List<Long> recoveryDelays = new ArrayList<>();
     protected int maxTopologyRecoveryRetries = 100;
     protected int maxConnectionResetRecoveryRetries = 0;
 
     public boolean isAutoDelete() {
-      return autoDelete && !isDurable && !isQuorum;
+      return autoDelete && !durable && !quorum;
     }
 
     public boolean isDurable() {
-      return isDurable || isQuorum;
+      return durable || quorum;
     }
   }
 }

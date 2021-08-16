@@ -1,0 +1,21 @@
+---
+applications:
+- name: RabbitLoadGenerator-AutoDelete
+  path: target/rabbit-load-generator-0.0.1-SNAPSHOT.jar
+  no-route: false
+  memory: 1024M
+  instances: 0
+  buildpacks:
+  - java_buildpack_offline
+  services:
+  - rabbitmq-04
+  - config-server
+  health-check-type: process
+  env:
+    SPRING_PROFILES_ACTIVE: 1k-autodelete
+    JAVA_OPTS: '-Djava.security.egd=file:/dev/./urandom -XX:+UseG1GC -XX:+UseStringDeduplication
+      -XX:MaxDirectMemorySize=10M -XX:ReservedCodeCacheSize=140M -Xss1M'
+    JBP_CONFIG_OPEN_JDK_JRE: '{memory_calculator: {class_count: 25000,headroom: 5.0,stack_threads: 200}}'
+    JBP_CONFIG_SPRING_AUTO_RECONFIGURATION: '{ enabled: false }'
+    SOLUTION_TEAM: core
+    SPRING_APPLICATION_NAME: RabbitLoadGenerator
