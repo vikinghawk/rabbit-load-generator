@@ -90,3 +90,4 @@ Running 4 instances of "1k-qq", 7 instances of "1k-durable-mirrored", and 7 inst
 1. 5940 channels
 1. 24975 bindings
 1. 126873 consumers
+1. 169 messages/sec
