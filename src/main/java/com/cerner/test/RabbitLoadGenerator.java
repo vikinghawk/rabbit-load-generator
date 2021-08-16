@@ -58,6 +58,8 @@ public class RabbitLoadGenerator implements EnvironmentAware {
     log.info("Using the following configurations: {}", props);
     for (final ScenarioConfig scenario : props.getScenarios()) {
       final long now = System.currentTimeMillis();
+      final String exchange =
+          scenario.getTopicExchange() + (scenario.isUniqueExchange() ? "." + now : "");
       final String queuePrefix = scenario.getQueueNamePrefix() + now + "-";
       final String routingKeyPrefix = scenario.getRoutingKeyPrefix() + now + ".";
       boolean exchangeDeclared = false;
@@ -87,7 +89,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
               });
           channel.basicQos(scenario.isAutoDelete() ? 20 : 5);
           if (!exchangeDeclared) {
-            channel.exchangeDeclare(scenario.getTopicExchange(), BuiltinExchangeType.TOPIC, true);
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.TOPIC, true);
             exchangeDeclared = true;
           }
           for (int k = 1; k <= scenario.getQueuesPerChannel(); k++) {
@@ -104,8 +106,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
             }
 
             for (int l = 1; l <= scenario.getBindingsPerQueue(); l++) {
-              channel.queueBind(
-                  queueName, scenario.getTopicExchange(), routingKeyPrefix + ++totalBindingCount);
+              channel.queueBind(queueName, exchange, routingKeyPrefix + ++totalBindingCount);
             }
             for (int l = 1; l <= scenario.getConsumersPerQueue(); l++) {
               channel.basicConsume(
@@ -173,8 +174,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                     if (scenario.isPublishPersistent()) {
                       basicProps.deliveryMode(2);
                     }
-                    channel.basicPublish(
-                        scenario.getTopicExchange(), routingKey, basicProps.build(), bytes);
+                    channel.basicPublish(exchange, routingKey, basicProps.build(), bytes);
                   } finally {
                     channelPool.put(channel);
                   }

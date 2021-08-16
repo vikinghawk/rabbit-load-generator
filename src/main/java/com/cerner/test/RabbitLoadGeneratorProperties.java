@@ -18,6 +18,7 @@ public class RabbitLoadGeneratorProperties {
   @NoArgsConstructor
   public static class ScenarioConfig {
     protected String topicExchange = "rabbit.load.generator.topic";
+    protected boolean uniqueExchange;
     protected String queueNamePrefix = "rabbit-load-generator-";
     protected String routingKeyPrefix = "RabbitLoadGenerator.";
 

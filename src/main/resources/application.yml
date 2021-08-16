@@ -31,6 +31,7 @@ rabbit-load-generator:
   # For each of the 999 bindings, a message is published every 120 seconds for a total throughput of 8.3 msgs/sec
   # Start 4 instances of this profile to match CareAware's NONPROD-01 cluster
   - queueNamePrefix: quorum-
+    uniqueExchange: true
     connections: 33
     channelsPerConnection: 10
     queuesPerChannel: 3
@@ -52,6 +53,7 @@ rabbit-load-generator:
   # For each of the 999 bindings, a message is published every 120 seconds for a total throughput of 8.3 msgs/sec
   # Start 7 instances of this profile to match CareAware's NONPROD-01 cluster
   - queueNamePrefix: classic-durable-mirrored-
+    uniqueExchange: true
     connections: 33
     channelsPerConnection: 10
     queuesPerChannel: 3
@@ -73,6 +75,7 @@ rabbit-load-generator:
   # For each of the 1998 bindings, a message is published every 180 seconds for a total throughput of 11 msgs/sec
   # Start 7 instances of this profile to match CareAware's NONPROD-01 cluster
   - queueNamePrefix: classic-autodelete-
+    uniqueExchange: true
     connections: 33
     channelsPerConnection: 10
     queuesPerChannel: 3
