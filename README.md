@@ -60,7 +60,7 @@ rabbit-load-generator:
     isDurable: true
     isQuorum: false
     publishInterval: 120000
-    publishPersistent: true
+    publishPersistent: false
 
 ---
 spring:
