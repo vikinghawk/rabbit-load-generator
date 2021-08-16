@@ -10,7 +10,7 @@ The following server-side policies are in place for each queue type:
 
 ![Queue Policies](policies.PNG)
 
-## Configuration:
+## Configuration
 
 See the following classes for additional configuration:
 

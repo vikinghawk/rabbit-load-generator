@@ -9,12 +9,15 @@ import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.impl.recovery.AutorecoveringConnection;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,7 +39,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
   private final RabbitLoadGeneratorProperties props;
   private final Map<AutorecoveringConnection, Set<String>> connections = new LinkedHashMap<>();
   private Environment environment;
-  private ScheduledExecutorService exec;
+  private List<ScheduledExecutorService> execs = new ArrayList<>();
 
   public RabbitLoadGenerator(
       final RabbitProperties rabbitProps, final RabbitLoadGeneratorProperties testProps) {
@@ -141,7 +144,9 @@ public class RabbitLoadGenerator implements EnvironmentAware {
             Utils.createConnection(
                 rabbitProps, scenario, "RabbitLoadGenerator-" + now + "-Publisher");
         connections.put(pubConnection, Collections.emptySet());
-        exec = Executors.newScheduledThreadPool(scenario.getPublishThreads());
+        final ScheduledExecutorService exec =
+            Executors.newScheduledThreadPool(scenario.getPublishThreads());
+        execs.add(exec);
         final LinkedBlockingQueue<Channel> channelPool =
             new LinkedBlockingQueue<>(scenario.getPublishThreads());
         for (int i = 0; i < scenario.getPublishThreads(); i++) {
@@ -190,9 +195,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
   @PreDestroy
   public void stop() {
     log.info("Shutting down...");
-    if (exec != null) {
-      exec.shutdownNow();
-    }
+    execs.forEach(ExecutorService::shutdownNow);
     connections.forEach(
         (c, queues) -> {
           // delete queues
