@@ -21,3 +21,33 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+
+# Maven project files
+.classpath
+.project
+.settings
+.factorypath
+.sts4-cache
+
+# IntelliJ project files
+*.iml
+*.ipr
+*.iws
+
+# misc
+target
+LICENSES
+.clover
+.fbprefs
+*.orig
+*.releaseBackup
+release.properties
+*.versionsBackup
+*.DS_Store
+.idea/
+*.log
+.springBeans
+CONFIGSTORE
+/data/
+/bin/
+.vscode/

@@ -1,0 +1,76 @@
+vcap:
+  application:
+    name: '@project.name@'
+spring:
+  application:
+    name: '@project.name@'
+  main:
+    banner-mode: "off"
+  cloud:
+    bus:
+      enabled: false
+    config:
+      enabled: false
+eureka:
+  client:
+    enabled: false
+info:
+  build:
+    artifact: '@project.artifactId@'
+    name: '@project.name@'
+    description: '@project.description@'
+    version: '@project.version@'
+    
+---
+spring:
+  profiles: 1k-qq
+rabbit-load-generator:
+  rabbitServiceName: rabbitmq-04
+  scenarios:
+  - queueNamePrefix: quorum-
+    connections: 20
+    channelsPerConnection: 10
+    queuesPerChannel: 5
+    consumersPerQueue: 4
+    bindingsPerQueue: 1
+    autoDelete: false
+    isDurable: true
+    isQuorum: true
+    publishInterval: 10000
+    publishPersistent: true
+
+---
+spring:
+  profiles: 1k-durable-mirrored
+rabbit-load-generator:
+  rabbitServiceName: rabbitmq-04
+  scenarios:
+  - queueNamePrefix: classic-durable-mirrored-
+    connections: 20
+    channelsPerConnection: 10
+    queuesPerChannel: 5
+    consumersPerQueue: 4
+    bindingsPerQueue: 1
+    autoDelete: false
+    isDurable: true
+    isQuorum: false
+    publishInterval: 10000
+    publishPersistent: true
+
+---
+spring:
+  profiles: 1k-autodelete
+rabbit-load-generator:
+  rabbitServiceName: rabbitmq-04
+  scenarios:
+  - queueNamePrefix: classic-autodelete-
+    connections: 20
+    channelsPerConnection: 10
+    queuesPerChannel: 5
+    consumersPerQueue: 1
+    bindingsPerQueue: 2
+    autoDelete: true
+    isDurable: false
+    isQuorum: false
+    publishInterval: 30000
+    publishPersistent: false

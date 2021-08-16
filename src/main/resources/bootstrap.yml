@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    bus:
+      enabled: false
+eureka:
+  client:
+    enabled: false
