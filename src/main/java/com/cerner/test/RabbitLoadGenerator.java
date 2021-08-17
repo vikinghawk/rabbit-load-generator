@@ -10,7 +10,6 @@ import com.rabbitmq.client.Envelope;
 import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.recovery.AutorecoveringConnection;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -161,13 +160,11 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                       final byte[] body)
                       throws IOException {
                     try {
-                      if (log.isDebugEnabled()) {
-                        log.debug(
-                            "Got message={} from connection={}, channel={}",
-                            new String(body, StandardCharsets.UTF_8),
-                            connectionName,
-                            getChannel().getChannelNumber());
-                      }
+                      log.debug(
+                          "Got message with {} bytes from connection={}, channel={}",
+                          body.length,
+                          connectionName,
+                          getChannel().getChannelNumber());
                       if (scenario.getProcessWaitMillis() > 0) {
                         try {
                           Thread.sleep(scenario.getProcessWaitMillis());
