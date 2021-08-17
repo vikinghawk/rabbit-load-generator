@@ -292,6 +292,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
               final String consumerTag =
                   channel.basicConsume(
                       "amq.rabbitmq.reply-to",
+                      true,
                       new DefaultConsumer(channel) {
                         @Override
                         public void handleDelivery(
