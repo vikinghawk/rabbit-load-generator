@@ -35,11 +35,17 @@ public class RabbitLoadGeneratorProperties {
     protected boolean deleteQueuesOnShutdown = true;
     protected boolean renameAutoDeleteQueuesOnRecovery = true;
 
+    protected int processWaitMillis = 0;
+
     protected long publishInterval = 10000;
     protected int publishMsgSizeBytes = 10000;
     protected boolean publishPersistent;
     protected int publishThreads = 5;
-    protected int processWaitMillis = 0;
+
+    protected long requestInterval = 0;
+    protected int requestMsgSizeBytes = 5000;
+    protected int replyMsgSizeBytes = 500000;
+    protected int requestThreads = 10;
 
     protected final List<Long> recoveryDelays = new ArrayList<>();
     protected int maxTopologyRecoveryRetries = 100;
