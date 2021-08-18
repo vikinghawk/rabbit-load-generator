@@ -65,32 +65,38 @@ public class RabbitLoadGenerator implements EnvironmentAware {
   public void stop() {
     log.info("Shutting down...");
     execs.forEach(ExecutorService::shutdownNow);
-    connections.forEach(
-        (c, queues) -> {
-          // delete queues
-          if (!queues.isEmpty()) {
-            try (Channel channel = c.createChannel()) {
-              queues.forEach(
-                  q -> {
-                    try {
-                      channel.queueDelete(q);
-                    } catch (Exception e) {
-                      log.error("Error deleting queue={}", q, e);
-                    }
-                  });
-            } catch (Exception e) {
-              log.error("Error deleting queues", e);
-            }
-          }
-          // close connection
-          try {
-            c.close();
-          } catch (IOException e) {
-            log.error("Error closing connection", e);
-          }
-        });
-    connections.clear();
+    connections
+        .entrySet()
+        .parallelStream()
+        .forEach(
+            entry -> {
+
+              // delete queues
+              if (!entry.getValue().isEmpty()) {
+                try (Channel channel = entry.getKey().createChannel()) {
+                  entry
+                      .getValue()
+                      .forEach(
+                          q -> {
+                            try {
+                              channel.queueDelete(q);
+                            } catch (Exception e) {
+                              log.error("Error deleting queue={}", q, e);
+                            }
+                          });
+                } catch (Exception e) {
+                  log.error("Error deleting queues", e);
+                }
+              }
+              // close connection
+              try {
+                entry.getKey().close();
+              } catch (IOException e) {
+                log.error("Error closing connection", e);
+              }
+            });
     log.info("Closed {} connections", connections.size());
+    connections.clear();
   }
 
   private void startScenario(final ScenarioConfig scenario) throws Exception {
