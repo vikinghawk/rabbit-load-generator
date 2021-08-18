@@ -297,7 +297,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
               if (replyConsumer.awaitReply(scenario.getRequestTimeout())) {
                 log.debug("Got reply for routingKey={}", routingKey);
               } else {
-                log.debug("Timed out waiting for reply for routingKey={}", routingKey);
+                log.error("Timed out waiting for reply for routingKey={}", routingKey);
               }
             } catch (final Exception e) {
               if (connection.isOpen()) {
