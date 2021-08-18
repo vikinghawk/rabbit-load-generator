@@ -221,7 +221,8 @@ public class RabbitLoadGenerator implements EnvironmentAware {
         Executors.newScheduledThreadPool(scenario.getPublishThreads());
     execs.add(exec);
     final BasicChannelPool channelPool =
-        new BasicChannelPool(connection, scenario.getPublishThreads());
+        new BasicChannelPool(
+            connection, scenario.getPublishThreads(), scenario.isPublishPersistent());
     final byte[] bytes = new byte[scenario.getPublishMsgSizeBytes()];
     ThreadLocalRandom.current().nextBytes(bytes);
     for (int i = 1; i <= totalBindingCount; i++) {
