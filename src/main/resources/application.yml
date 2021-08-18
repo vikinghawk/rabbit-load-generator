@@ -23,7 +23,7 @@ info:
     
 ---
 spring:
-  profiles: 1k-qq
+  profiles: qq
 rabbit-load-generator:
   rabbitServiceName: rabbitmq-04
   scenarios:
@@ -46,7 +46,7 @@ rabbit-load-generator:
 
 ---
 spring:
-  profiles: 1k-durable-mirrored
+  profiles: durable-mirrored
 rabbit-load-generator:
   rabbitServiceName: rabbitmq-04
   scenarios:
@@ -70,7 +70,7 @@ rabbit-load-generator:
 
 ---
 spring:
-  profiles: 1k-autodelete
+  profiles: autodelete
 rabbit-load-generator:
   rabbitServiceName: rabbitmq-04
   scenarios:

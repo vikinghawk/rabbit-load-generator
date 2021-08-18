@@ -12,7 +12,7 @@ applications:
   - config-server
   health-check-type: process
   env:
-    SPRING_PROFILES_ACTIVE: 1k-autodelete
+    SPRING_PROFILES_ACTIVE: autodelete
     JAVA_OPTS: '-Djava.security.egd=file:/dev/./urandom -XX:+UseG1GC -XX:+UseStringDeduplication
       -XX:MaxDirectMemorySize=10M -XX:ReservedCodeCacheSize=140M -Xss1M'
     JBP_CONFIG_OPEN_JDK_JRE: '{memory_calculator: {class_count: 25000,headroom: 5.0,stack_threads: 200}}'
