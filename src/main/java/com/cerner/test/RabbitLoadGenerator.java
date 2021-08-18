@@ -7,7 +7,6 @@ import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.ShutdownSignalException;
 import com.rabbitmq.client.impl.recovery.AutorecoveringConnection;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -160,11 +160,7 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                       final byte[] body)
                       throws IOException {
                     try {
-                      log.debug(
-                          "Got message with {} bytes from connection={}, channel={}",
-                          body.length,
-                          connectionName,
-                          getChannel().getChannelNumber());
+                      log.debug("Got message with {} bytes from queue={}", body.length, queueName);
                       if (scenario.getProcessWaitMillis() > 0) {
                         try {
                           Thread.sleep(scenario.getProcessWaitMillis());
@@ -175,17 +171,19 @@ public class RabbitLoadGenerator implements EnvironmentAware {
                       String replyTo = properties.getReplyTo();
                       if (replyTo != null && !replyTo.isEmpty()) {
                         // send a reply
-                        Channel channel = null;
+                        Channel replyChannel = null;
                         try {
-                          channel = replyChannelPool.checkout();
+                          replyChannel = replyChannelPool.checkout();
                           final BasicProperties.Builder basicProps = new BasicProperties.Builder();
                           basicProps.messageId(UUID.randomUUID().toString());
-                          channel.basicPublish("", replyTo, basicProps.build(), replyBytes);
-                          log.debug("Sent reply from connection={}", connectionName);
+                          basicProps.deliveryMode(1);
+                          basicProps.expiration(String.valueOf(scenario.getRequestTimeout()));
+                          replyChannel.basicPublish("", replyTo, basicProps.build(), replyBytes);
+                          log.debug("Sent reply from queue={}", queueName);
                         } catch (final Exception e) {
-                          log.error("Error sending reply from connection={}", connectionName, e);
+                          log.error("Error sending reply from queue={}", queueName, e);
                         } finally {
-                          replyChannelPool.checkin(channel);
+                          replyChannelPool.checkin(replyChannel);
                         }
                       }
                     } finally {
@@ -224,10 +222,10 @@ public class RabbitLoadGenerator implements EnvironmentAware {
     execs.add(exec);
     final BasicChannelPool channelPool =
         new BasicChannelPool(connection, scenario.getPublishThreads());
+    final byte[] bytes = new byte[scenario.getPublishMsgSizeBytes()];
+    ThreadLocalRandom.current().nextBytes(bytes);
     for (int i = 1; i <= totalBindingCount; i++) {
       final String routingKey = routingKeyPrefix + i;
-      final byte[] bytes = new byte[scenario.getPublishMsgSizeBytes()];
-      ThreadLocalRandom.current().nextBytes(bytes);
       exec.scheduleAtFixedRate(
           () -> {
             Channel channel = null;
@@ -235,10 +233,9 @@ public class RabbitLoadGenerator implements EnvironmentAware {
               channel = channelPool.checkout();
               final BasicProperties.Builder basicProps = new BasicProperties.Builder();
               basicProps.messageId(UUID.randomUUID().toString());
-              if (scenario.isPublishPersistent()) {
-                basicProps.deliveryMode(2);
-              }
+              basicProps.deliveryMode(scenario.isPublishPersistent() ? 2 : 1);
               channel.basicPublish(exchange, routingKey, basicProps.build(), bytes);
+              log.debug("Published message on routingKey={}", routingKey);
             } catch (final Exception e) {
               if (connection.isOpen()) {
                 log.error("Error publishing on routingKey={}", routingKey, e);
@@ -276,65 +273,45 @@ public class RabbitLoadGenerator implements EnvironmentAware {
     execs.add(exec);
     final BasicChannelPool channelPool =
         new BasicChannelPool(connection, scenario.getRequestThreads());
+    final byte[] bytes = new byte[scenario.getRequestMsgSizeBytes()];
+    ThreadLocalRandom.current().nextBytes(bytes);
     for (int i = 1; i <= totalBindingCount; i++) {
       final String routingKey = routingKeyPrefix + i;
-      final byte[] bytes = new byte[scenario.getRequestMsgSizeBytes()];
-      ThreadLocalRandom.current().nextBytes(bytes);
       exec.scheduleAtFixedRate(
           () -> {
             Channel channel = null;
+            String consumerTag = null;
             try {
               channel = channelPool.checkout();
               // create consumer to handle reply
-              final String consumerTag =
-                  channel.basicConsume(
-                      "amq.rabbitmq.reply-to",
-                      true,
-                      new DefaultConsumer(channel) {
-                        @Override
-                        public void handleDelivery(
-                            final String consumerTag,
-                            final Envelope envelope,
-                            final AMQP.BasicProperties properties,
-                            final byte[] body)
-                            throws IOException {
-                          log.debug("Got reply for routingKey={}", routingKey);
-                          cleanup(consumerTag);
-                        }
-
-                        @Override
-                        public void handleCancel(final String consumerTag) throws IOException {
-                          cleanup(consumerTag);
-                        }
-
-                        @Override
-                        public void handleShutdownSignal(
-                            final String consumerTag, final ShutdownSignalException sig) {
-                          cleanup(consumerTag);
-                        }
-
-                        private void cleanup(final String consumerTag) {
-                          cancelConsumer(getChannel(), consumerTag);
-                          channelPool.checkin(getChannel());
-                        }
-                      });
+              final ReplyConsumer replyConsumer = new ReplyConsumer(channel);
+              consumerTag = channel.basicConsume("amq.rabbitmq.reply-to", true, replyConsumer);
               // send request
-              try {
-                final BasicProperties.Builder basicProps = new BasicProperties.Builder();
-                basicProps.messageId(UUID.randomUUID().toString());
-                basicProps.replyTo("amq.rabbitmq.reply-to");
-                channel.basicPublish(exchange, routingKey, basicProps.build(), bytes);
-              } catch (final Exception e) {
-                // cancel the consumer
-                cancelConsumer(channel, consumerTag);
-                throw e;
+              final BasicProperties.Builder basicProps = new BasicProperties.Builder();
+              basicProps.messageId(UUID.randomUUID().toString());
+              basicProps.deliveryMode(1);
+              basicProps.replyTo("amq.rabbitmq.reply-to");
+              basicProps.expiration(String.valueOf(scenario.getRequestTimeout()));
+              channel.basicPublish(exchange, routingKey, basicProps.build(), bytes);
+              log.debug("Sent request for routingKey={}", routingKey);
+              if (replyConsumer.awaitReply(scenario.getRequestTimeout())) {
+                log.debug("Got reply for routingKey={}", routingKey);
+              } else {
+                log.debug("Timed out waiting for reply for routingKey={}", routingKey);
               }
             } catch (final Exception e) {
-              channelPool.checkin(channel);
               if (connection.isOpen()) {
                 log.error("Error sending request on routingKey={}", routingKey, e);
               } else {
                 log.debug("Error sending request on closed connection", e);
+              }
+            } finally {
+              try {
+                if (consumerTag != null) channel.basicCancel(consumerTag);
+              } catch (final Exception e) {
+                log.debug("Error canceling reply consumer", e);
+              } finally {
+                channelPool.checkin(channel);
               }
             }
           },
@@ -348,11 +325,25 @@ public class RabbitLoadGenerator implements EnvironmentAware {
         scenario.getRequestInterval());
   }
 
-  private static void cancelConsumer(final Channel channel, final String consumerTag) {
-    try {
-      channel.basicCancel(consumerTag);
-    } catch (final Exception e) {
-      log.debug("Error canceling reply consumer", e);
+  private static class ReplyConsumer extends DefaultConsumer {
+    private final CountDownLatch latch = new CountDownLatch(1);
+
+    ReplyConsumer(final Channel channel) {
+      super(channel);
+    }
+
+    @Override
+    public void handleDelivery(
+        final String consumerTag,
+        final Envelope envelope,
+        final AMQP.BasicProperties properties,
+        final byte[] body)
+        throws IOException {
+      latch.countDown();
+    }
+
+    public boolean awaitReply(final long timeout) throws InterruptedException {
+      return latch.await(timeout, TimeUnit.MILLISECONDS);
     }
   }
 }
